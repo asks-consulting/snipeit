@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=Snipe-IT
+Type=Application
+Exec=/usr/bin/chromium-browser --new-window --app="https://{{ snipeit.www.domain }}"
+GenericName={{ snipeit.www.domain }}
+Comment=Asset management ASKS FM-NET
+Categories=Network;WebDevelopment;
+Keywords=snipeit;webapp;asset management;
+StartupWMClass=chromium-app-snipeit
+Icon={{ desktop_icon.dest }}
+Version=1.1
+{# empty MimeType line just to suppress "lacks Mimetype" warning during update-desktop-database #}
+MimeType=

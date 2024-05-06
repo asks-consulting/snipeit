@@ -5,25 +5,38 @@
   tags:
     - default
     - config-only
+    - desktop-entry
 
-- ansible.builtin.import_tasks: version-check.yml
-  tags: config-only
 
-- ansible.builtin.import_tasks: database.yml
-  tags: config-only
+- name: Setup Snipe-IT
+  when: not (host_restrictions | bool) or group_names is not search("workstation")
+  block:
 
-- ansible.builtin.import_tasks: install.yml
+    - ansible.builtin.import_tasks: version-check.yml
+      tags: config-only
 
-- ansible.builtin.import_tasks: config.yml
-  tags: config-only
+    - ansible.builtin.import_tasks: database.yml
+      tags: config-only
 
-- ansible.builtin.import_tasks: vhost.yml
-  tags: config-only
+    - ansible.builtin.import_tasks: install.yml
 
-- ansible.builtin.import_tasks: migrations.yml
-  tags: config-only
+    - ansible.builtin.import_tasks: config.yml
+      tags: config-only
+
+    - ansible.builtin.import_tasks: vhost.yml
+      tags: config-only
+
+    - ansible.builtin.import_tasks: migrations.yml
+      tags: config-only
+  # END OF BLOCK
+
+
+- ansible.builtin.import_tasks: desktop-entry.yml
+  when: not (host_restrictions | bool) or group_names is search("workstation")
+  tags: desktop-entry
 
 - ansible.builtin.import_tasks: log-git-state.yml
   tags:
     - log-git-state
     - config-only
+    - desktop-entry
