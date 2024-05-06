@@ -1,0 +1,53 @@
+---
+
+# What we do here is equivalent to:
+# CREATE USER 'username'@'localhost' IDENTIFIED BY 'password';
+# CREATE DATABASE IF NOT EXISTS snipeit;
+# GRANT ALL PRIVILEGES ON snipeit.* TO 'username'@'localhost';
+# FLUSH PRIVILEGES;
+
+- name: Check which MariaDB databases exist
+  community.mysql.mysql_info:
+    login_unix_socket: "{{ snipeit.database.socket }}"
+    login_user: "root"
+    login_password: "{{ snipeit.database.root_pass }}"
+    filter:
+      - "databases"
+  register: snipeit_mariadb_info
+
+
+- name: Create database and user (if not already exists)
+  when: "snipeit.database.name not in snipeit_mariadb_info.databases"
+  no_log: "{% if snipeit_testing | bool %}false{% else %}true{% endif %}"
+  block:
+
+    # https://docs.ansible.com/ansible/latest/collections/community/mysql/mysql_db_module.html
+    # PyMySQL pip module needs to be installed on the Ansible nodes, but not only
+    # as the regular user, but also as root.
+    # I have reorganised my python3 role so that PyMySQL is installed for both root and the regular user.
+    # NOTE: error "unable to connect to database" is expected for MariaDB before v10.4
+    # because MariaDB before that does not use unix_socket plugin for auth (at least not by default)
+    # My MariaDB role only handles this for v10.4 and above.
+    # NOTE: it's not necessary to set "collation: utf8mb4_general_ci" and "encoding: utf8mb4",
+    # as they were set anyway (default in mariadb, I suppose).
+    - name: Create SQL database for snipeit instance
+      community.mysql.mysql_db:
+        name: "{{ snipeit.database.name }}"
+        state: present
+        login_unix_socket: "{{ snipeit.database.socket }}"
+        login_user: "root"
+        login_password: "{{ snipeit.database.root_pass }}"
+
+    # give the "snipeit" user privileges on the new database (without affecting existing privs)
+    - name: "Create {{ snipeit.database.user }} SQL user and give them privileges on {{ snipeit.database.name }}"
+      community.mysql.mysql_user:
+        name: "{{ snipeit.database.user }}"
+        password: "{{ snipeit.database.pass }}"
+        state: present
+        append_privs: yes
+        # have to login as root to edit the user table
+        login_unix_socket: "{{ snipeit.database.socket }}"
+        login_user: "root"
+        login_password: "{{ snipeit.database.root_pass }}"
+        priv: '{{ snipeit.database.name }}.*:ALL'
+  # END OF BLOCK

@@ -1,0 +1,70 @@
+---
+
+- name: "Find URL of snipeit source tarball v{{ snipeit.version }}"
+  when: snipeit.version != "latest"
+  block:
+
+    - name: "Query Github API for snipeit v{{ snipeit.version }}"
+      run_once: true
+      delegate_to: localhost
+      become: true
+      become_user: "{{ local_user }}"
+      ansible.builtin.uri:
+        method: GET
+        status_code: 200
+        # https://api.github.com/repos/snipe/snipe-it/releases/tags/v6.3.4
+        url: "https://api.github.com/repos/{{ snipeit.gh_slug }}/releases/tags/v{{ snipeit.version }}"
+      register: snipeit_uri
+
+    # - ansible.builtin.set_fact:
+    #     snipeit_download_url: "{{ snipeit_uri.json.tarball_url }}"
+
+    - ansible.builtin.set_fact:
+        snipeit_version: "{{ snipeit.version }}" # 6.3.4
+  # END OF BLOCK
+
+
+- name: Find latest available snipeit version
+  when: snipeit_version == "latest"
+  block:
+
+    - name: Gather latest snipeit release information from github
+      ansible.builtin.uri:
+        method: GET
+        status_code: 200
+        url: https://api.github.com/repos/{{ snipeit.gh_slug }}/releases/latest
+      run_once: true
+      delegate_to: localhost
+      register: snipeit_uri
+
+    # # [1:] strips the first character ("v" in this case) from the version string
+    - name: Latest snipeit version
+      ansible.builtin.set_fact:
+        snipeit_version: "{{ snipeit_uri.json.tag_name[1:] }}" # 6.3.4
+  # END OF BLOCK
+
+
+- debug:
+    var: snipeit_version
+  when: snipeit_testing | bool
+
+
+
+# - name: "Check for existing install at {{ snipeit.path.base }}"
+#   ansible.builtin.stat:
+#     path: "{{ snipeit.path.base }}/snipeit/snipeit/settings.py"
+#   changed_when: false
+#   register: snipeit_canary
+
+# # /opt/snipeit/snipeit/snipeit/settings.py
+# # VERSION = '3.2.7'
+# - name: Find installed version of snipeit
+#   when: snipeit_canary.stat.exists | bool
+#   ansible.builtin.shell: >
+#     awk '/^VERSION/{print $3}'
+#     {{ snipeit.path.base }}/snipeit/snipeit/settings.py |
+#     sed "s/'//g"
+#   register: snipeit_installedv_cmd
+
+# - ansible.builtin.set_fact:
+#     snipeit_iversion: "{{ snipeit_installedv_cmd.stdout | default('0.0') }}"

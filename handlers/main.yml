@@ -1,0 +1,16 @@
+---
+
+- name: restart apache
+  ansible.builtin.service:
+    name: "{{ apache_service }}"
+    state: "{{ apache_restart_state }}"
+
+- name: reload apache
+  ansible.builtin.service:
+    name: "{{ apache_service }}"
+    state: "{{ apache_reload_state }}"
+
+- name: restart mysql
+  ansible.builtin.service:
+    name: "{{ mysql_daemon }}"
+    state: restarted

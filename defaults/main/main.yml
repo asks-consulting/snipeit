@@ -1,0 +1,54 @@
+---
+
+snipeit_default:
+  # specify a version string, e.g., "6.3.4", or "latest"
+  version: "latest"
+  gh_repo: https://github.com/snipe/snipe-it
+  gh_slug: snipe/snipe-it
+  dir:
+    install: /opt/snipeit
+  config:
+    # local or production
+    environment: "production"
+    key: "<yoursecretappkey>"
+    # https://www.w3schools.com/php/php_ref_timezones.asp
+    # Europe/Stockholm
+    timezone: "UTC"
+    trusted_proxies:
+      - 192.168.1.1
+      - 10.0.0.1
+  # webserver is assumed to be Apache
+  www:
+    root: /var/www/html/snipeit
+    owner: www-data
+    group: www-data
+    domain: "<snipeit.domain.se>"
+  database:
+    name: snipeit
+    user: "<sql_username>"
+    pass: "<sql_password>"
+    host: localhost
+    prefix: "snipeit_"
+    root_pass: "<sql_root_password>"
+    socket: /var/run/mysqld/mysqld.sock
+  smtp:
+    host: "localhost"
+    port: 25
+    user: "<smtp@domain.se>"
+    pass: "<mail-password>"
+    encryption: "tls"
+    from:
+      address: "<snipe-it@domain.se>"
+      name: "Snipe-IT"
+    replyto:
+      address: "<webmaster@domain.se>"
+      name: "Snipe sysadmin"
+    backup_notification_address: "<hostmaster@domain.se>"
+
+# set snipeit_testing to true to enable debug messages
+# easiest via --extra-vars "{snipeit_testing: true}"
+snipeit_testing: false
+
+# host_restrictions==False by default to allow any tasks limited to run on specific
+# hosts in solarchemist's environment (in order to allow anyone to run the role as-is)
+host_restrictions: false

@@ -1,0 +1,12 @@
+---
+
+# our options are to git clone or download the source code tarball from github
+- name: Checkout Snipe-IT v{{ snipeit_version }}
+  ansible.builtin.git:
+    repo: "{{ snipeit.gh_repo }}.git"
+    # no need to checkout all history - the last commit suffices
+    depth: 1
+    dest: "{{ snipeit.dir.install }}"
+    version: "v{{ snipeit_version }}"
+    # overwrite any local changes
+    force: true

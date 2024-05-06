@@ -1,0 +1,29 @@
+---
+
+- name: Merge default variable
+  ansible.builtin.import_tasks: merge-defaults.yml
+  tags:
+    - default
+    - config-only
+
+- ansible.builtin.import_tasks: version-check.yml
+  tags: config-only
+
+- ansible.builtin.import_tasks: database.yml
+
+- ansible.builtin.import_tasks: install.yml
+
+- ansible.builtin.import_tasks: config.yml
+
+- ansible.builtin.import_tasks: vhost.yml
+
+- pause:
+    minutes: 30
+  when: snipeit_testing | bool
+
+- ansible.builtin.import_tasks: migrations.yml
+
+- ansible.builtin.import_tasks: log-git-state.yml
+  tags:
+    - log-git-state
+    - config-only

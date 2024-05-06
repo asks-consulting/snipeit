@@ -1,0 +1,26 @@
+---
+
+# "snipeit" variable should be defined somewhere with higher priority, such
+# as in group_vars, play vars or role vars
+
+# if variable "snipeit" is defined, merge it with "snipeit_default"
+# https://docs.ansible.com/ansible/latest/collections/ansible/builtin/combine_filter.html
+- name: Merge snipeit default variable
+  run_once: true
+  when: snipeit is defined
+  tags: default
+  ansible.builtin.set_fact:
+    snipeit: "{{ snipeit_default | combine(snipeit, recursive=True) }}"
+
+# if "snipeit" is not defined, simply assign "snipeit_default" -> "snipeit"
+- name: Use snipeit default variable
+  run_once: true
+  when: snipeit is not defined
+  tags: default
+  ansible.builtin.set_fact:
+    snipeit: "{{ snipeit_default }}"
+
+- name: Inspect "snipeit" variable
+  debug:
+    var: snipeit
+  when: snipeit_testing | bool

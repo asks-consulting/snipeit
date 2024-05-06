@@ -1,0 +1,13 @@
+<VirtualHost *:80>
+   ServerName "{{ vhost_domain }}"
+   DocumentRoot "{{ vhost_wwwroot }}/public"
+
+   <Directory "{{ vhost_wwwroot }}/public/">
+      Require all granted
+      AllowOverride All
+      Options +Indexes
+   </Directory>
+
+   ErrorLog ${APACHE_LOG_DIR}/{{ vhost_domain }}_error.log
+   CustomLog ${APACHE_LOG_DIR}/{{ vhost_domain }}_access.log combined
+</VirtualHost>

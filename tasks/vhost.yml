@@ -1,0 +1,25 @@
+---
+
+- name: Apache vhost settings
+  ansible.builtin.set_fact:
+    vhost_domain: "{{ snipeit.www.domain }}"
+    vhost_wwwroot: "{{ snipeit.www.root }}"
+    vhost_email: "{{ snipeit.smtp.replyto.address }}"
+
+- name: "Configure vhost {{ vhost_domain }}"
+  ansible.builtin.template:
+    src: vhost.conf.j2
+    dest: "/etc/apache2/sites-available/{{ vhost_domain }}.conf"
+    owner: root
+    group: root
+    mode: u=rw,go=r
+  notify: reload apache
+
+- name: "Check whether site {{ vhost_domain }} is already enabled"
+  ansible.builtin.stat:
+    path: "/etc/apache2/sites-enabled/{{ vhost_domain }}.conf"
+  register: snipeit_vhost_enabled
+
+- name: "a2ensite {{ vhost_domain }}.conf"
+  ansible.builtin.command: "a2ensite {{ vhost_domain }}.conf"
+  when: not (snipeit_vhost_enabled.stat.exists | bool)

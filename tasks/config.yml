@@ -1,0 +1,13 @@
+---
+
+# https://docs.ansible.com/ansible/latest/collections/community/general/to_ini_filter.html
+- name: Write .env file to {{ snipeit.dir.install }}/.env
+  ansible.builtin.copy:
+    # > to_ini failed to parse given dict:'AnsibleUnsafeText' object has no attribute 'items'.
+    # > 'AnsibleUnsafeText' object has no attribute 'items'
+    # content: "{{ snipeit_dotenv | community.general.to_ini }}"
+    content: "{{ snipeit_dotenv | ansible.builtin.to_nice_yaml }}"
+    dest: "{{ snipeit.dir.install }}/.env"
+    owner: "{{ snipeit.www.owner }}"
+    group: "{{ snipeit.www.group }}"
+    mode: '0444'

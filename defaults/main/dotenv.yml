@@ -1,0 +1,145 @@
+---
+
+# remember, my thinking here is that if you need to reset anything in snipeit_dotenv,
+# you should include it in snipeit_default above. That way you do not have to overwrite
+# the entire snipeit_dotenv dict but only the relevant snipeit.* field.
+snipeit_dotenv:
+  ### BASIC APP SETTINGS
+  APP_ENV: "{{ snipeit.config.environment }}"
+  APP_DEBUG: "false"
+  # should it be base64?
+  # APP_KEY=base64:IWaWvo7AnvPM6dRIagwx2KVNwt0TbbCy4JuwRs01Gzw=
+  # please regenerate the APP_KEY value by calling `docker-compose run --rm snipeit bash` and then `php artisan key:generate --show` and then copy paste the value here
+  APP_KEY: "{{ snipeit.config.key }}"
+  APP_URL: "http://{{ snipeit.www.domain }}"
+  APP_TIMEZONE: "{{ snipeit.config.timezone }}"
+  APP_LOCALE: en
+  MAX_RESULTS: 500
+  ### DATABASE SETTINGS
+  DB_CONNECTION: mysql
+  DB_HOST: "{{ snipeit.database.host }}"
+  DB_DATABASE: "{{ snipeit.database.name }}"
+  DB_USERNAME: "{{ snipeit.database.user }}"
+  DB_PASSWORD: "{{ snipeit.database.pass }}"
+  DB_PREFIX: "{{ snipeit.database.prefix }}"
+  DB_DUMP_PATH: "/usr/bin"
+  DB_CHARSET: utf8mb4
+  DB_COLLATION: utf8mb4_unicode_ci
+  ### OUTGOING MAIL SERVER SETTINGS
+  # "smtp" or "log"
+  MAIL_DRIVER: smtp
+  MAIL_HOST: "{{ snipeit.smtp.host }}"
+  MAIL_PORT: "{{ snipeit.smtp.port }}"
+  MAIL_USERNAME: "{{ snipeit.smtp.user }}"
+  MAIL_PASSWORD: "{{ snipeit.smtp.pass }}"
+  MAIL_ENCRYPTION: "{{ snipeit.smtp.encryption }}"
+  MAIL_FROM_ADDR: "{{ snipeit.smtp.from.address }}"
+  MAIL_FROM_NAME: "{{ snipeit.smtp.from.name }}"
+  MAIL_REPLYTO_ADDR: "{{ snipeit.smtp.replyto.address }}"
+  MAIL_REPLYTO_NAME: "{{ snipeit.smtp.replyto.name }}"
+  MAIL_AUTO_EMBED: "true"
+  # "base64" or "attachment"
+  MAIL_AUTO_EMBED_METHOD: "base64"
+  ### IMAGE LIBRARY
+  # This should be gd or imagick
+  IMAGE_LIB: gd
+  ### UPLOADED FILE STORAGE SETTINGS
+  PRIVATE_FILESYSTEM_DISK: local
+  PUBLIC_FILESYSTEM_DISK: local_public
+  ### SESSION SETTINGS (optional)
+  SESSION_DRIVER: file
+  SESSION_LIFETIME: 12000
+  EXPIRE_ON_CLOSE: "false"
+  ENCRYPT: "false"
+  COOKIE_NAME: snipeit_session
+  COOKIE_DOMAIN: "null"
+  SECURE_COOKIES: "false"
+  # https://github.com/wiggels/ansible-role-snipe-it/blob/c516bdbb67ab91098f8bc829fbc5a33067ae7bc3/defaults/main.yml#L52
+  API_TOKEN_EXPIRATION_YEARS: 40
+  BS_TABLE_STORAGE: cookieStorage
+  BS_TABLE_DEEPLINK: "true"
+  ### SSL DATABASE SETTINGS (optional)
+  DB_SSL: "false"
+  DB_SSL_IS_PAAS: "false"
+  DB_SSL_KEY_PATH: "null"
+  DB_SSL_CERT_PATH: "null"
+  DB_SSL_CA_PATH: "null"
+  DB_SSL_CIPHER: "null"
+  ### SECURITY HEADER SETTINGS (optional)
+  APP_TRUSTED_PROXIES: "{{ snipeit.config.trusted_proxies | list | join(',') }}"
+  ALLOW_IFRAMING: "false"
+  REFERRER_POLICY: same-origin
+  ENABLE_CSP: "false"
+  CORS_ALLOWED_ORIGINS: "null"
+  ENABLE_HSTS: "false"
+  ### API (optional)
+  API_MAX_REQUESTS_PER_HOUR: 200
+  ### CACHE SETTINGS (optional)
+  CACHE_DRIVER: file
+  QUEUE_DRIVER: sync
+  CACHE_PREFIX: snipeit
+  ### REDIS SETTINGS (optional)
+  REDIS_HOST: "null"
+  REDIS_PASSWORD: "null"
+  REDIS_PORT: "null"
+  ### MEMCACHED SETTINGS (optional)
+  MEMCACHED_HOST: "null"
+  MEMCACHED_PORT: "null"
+  ### PUBLIC S3 Settings (optional)
+  PUBLIC_AWS_SECRET_ACCESS_KEY: "null"
+  PUBLIC_AWS_ACCESS_KEY_ID: "null"
+  PUBLIC_AWS_DEFAULT_REGION: "null"
+  PUBLIC_AWS_BUCKET: "null"
+  PUBLIC_AWS_URL: "null"
+  PUBLIC_AWS_BUCKET_ROOT: "null"
+  ### PRIVATE S3 Settings (optional)
+  PRIVATE_AWS_ACCESS_KEY_ID: "null"
+  PRIVATE_AWS_SECRET_ACCESS_KEY: "null"
+  PRIVATE_AWS_DEFAULT_REGION: "null"
+  PRIVATE_AWS_BUCKET: "null"
+  PRIVATE_AWS_URL: "null"
+  PRIVATE_AWS_BUCKET_ROOT: "null"
+  ### AWS Settings (optional)
+  AWS_ACCESS_KEY_ID: "null"
+  AWS_SECRET_ACCESS_KEY: "null"
+  AWS_DEFAULT_REGION: "null"
+  ### SAML SETTINGS (optional)
+  DISABLE_NOSAML_LOCAL_LOGIN: "false"
+  ### LOGIN THROTTLING (optional)
+  LOGIN_MAX_ATTEMPTS: 5
+  LOGIN_LOCKOUT_DURATION: 60
+  RESET_PASSWORD_LINK_EXPIRES: 900
+  ### BACKUP SETTINGS (optional)
+  # null or smtp I assume?
+  MAIL_BACKUP_NOTIFICATION_DRIVER: "smtp"
+  MAIL_BACKUP_NOTIFICATION_ADDRESS: "{{ snipeit.smtp.backup_notification_address }}"
+  ALLOW_BACKUP_DELETE: "false"
+  ALLOW_DATA_PURGE: "false"
+  BACKUP_ENV: "true"
+  # OPTIONAL: HASHING
+  HASHING_DRIVER: "bcrypt"
+  BCRYPT_ROUNDS: 10
+  ARGON_MEMORY: 1024
+  ARGON_THREADS: 2
+  ARGON_TIME: 2
+  ### MISC (optional)
+  # replaced by LOG_CHANNEL?
+  # APP_LOG: single
+  # "single" or "stderr"
+  LOG_CHANNEL: "single"
+  # "debug" or
+  LOG_LEVEL: "debug"
+  # APP_LOG_LEVEL: debug
+  LOG_SLACK_WEBHOOK_URL: "null"
+  LOG_MAX_DAYS: 10
+  APP_LOG_MAX_FILES: 10
+  APP_FORCE_TLS: "false"
+  APP_LOCKED: "false"
+  APP_CIPHER: AES-256-CBC
+  GOOGLE_MAPS_API: "null"
+  IMPORT_TIME_LIMIT: 600
+  IMPORT_MEMORY_LIMIT: 500M
+  REPORT_TIME_LIMIT: 12000
+  REQUIRE_SAML: "false"
+  API_THROTTLE_PER_MINUTE: 120
+  CSV_ESCAPE_FORMULAS: "true"
