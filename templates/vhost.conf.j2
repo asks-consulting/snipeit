@@ -5,7 +5,7 @@
    <Directory "{{ vhost_wwwroot }}/public/">
       Require all granted
       AllowOverride All
-      Options +Indexes
+      Options -Indexes
    </Directory>
 
    ErrorLog ${APACHE_LOG_DIR}/{{ vhost_domain }}_error.log

@@ -1,5 +1,13 @@
 ---
 
+# unless folder already have www-data as owner next task fails to create it
+- name: Prepare checkout directory
+  ansible.builtin.file:
+    path: "{{ snipeit.dir.install }}"
+    state: directory
+    owner: "{{ snipeit.www.owner }}"
+    group: "{{ snipeit.www.group }}"
+
 # our options are to git clone or download the source code tarball from github
 - name: Checkout Snipe-IT v{{ snipeit_version }}
   ansible.builtin.git:
@@ -10,3 +18,40 @@
     version: "v{{ snipeit_version }}"
     # overwrite any local changes
     force: true
+  become: true
+  become_user: "{{ snipeit.www.owner }}"
+
+
+- name: Install composer dependencies
+  block:
+    # note, composer install fails if .env is even slightly malformed (say, a spurious space outside quotes)
+    # https://docs.ansible.com/ansible/latest/collections/community/general/composer_module.html
+    - name: Install dependencies from composer
+      community.general.composer:
+        # composer install --no-dev --prefer-source
+        command: install
+        no_dev: true
+        prefer_source: true
+        working_dir: "{{ snipeit.dir.install }}"
+      become: true
+      # composer must NOT be run as root - fails unless explicitly overridden
+      become_user: "{{ snipeit.www.owner }}"
+      notify: restart apache
+
+  # this rescue block quite useful during development of this role, in case
+  # .env was malformed or such
+  rescue:
+    - name: Delete .env file
+      ansible.builtin.file:
+        path: "{{ snipeit.dir.install }}/.env"
+        state: absent
+    - name: Install dependencies from composer (trying again...)
+      community.general.composer:
+        command: install
+        no_dev: true
+        prefer_source: true
+        working_dir: "{{ snipeit.dir.install }}"
+      become: true
+      become_user: "{{ snipeit.www.owner }}"
+      notify: restart apache
+  # END OF BLOCK

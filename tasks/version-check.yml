@@ -16,9 +16,6 @@
         url: "https://api.github.com/repos/{{ snipeit.gh_slug }}/releases/tags/v{{ snipeit.version }}"
       register: snipeit_uri
 
-    # - ansible.builtin.set_fact:
-    #     snipeit_download_url: "{{ snipeit_uri.json.tarball_url }}"
-
     - ansible.builtin.set_fact:
         snipeit_version: "{{ snipeit.version }}" # 6.3.4
   # END OF BLOCK
@@ -47,24 +44,3 @@
 - debug:
     var: snipeit_version
   when: snipeit_testing | bool
-
-
-
-# - name: "Check for existing install at {{ snipeit.path.base }}"
-#   ansible.builtin.stat:
-#     path: "{{ snipeit.path.base }}/snipeit/snipeit/settings.py"
-#   changed_when: false
-#   register: snipeit_canary
-
-# # /opt/snipeit/snipeit/snipeit/settings.py
-# # VERSION = '3.2.7'
-# - name: Find installed version of snipeit
-#   when: snipeit_canary.stat.exists | bool
-#   ansible.builtin.shell: >
-#     awk '/^VERSION/{print $3}'
-#     {{ snipeit.path.base }}/snipeit/snipeit/settings.py |
-#     sed "s/'//g"
-#   register: snipeit_installedv_cmd
-
-# - ansible.builtin.set_fact:
-#     snipeit_iversion: "{{ snipeit_installedv_cmd.stdout | default('0.0') }}"

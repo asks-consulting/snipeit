@@ -1,2 +1,30 @@
 ---
 
+- name: clear all caches
+  ansible.builtin.command: "{{ item }}"
+  args:
+    chdir: "{{ snipeit.dir.install }}"
+  become: true
+  become_user: "{{ snipeit.www.owner }}"
+  loop:
+    - composer dump-autoload
+    - php artisan cache:clear
+    - php artisan config:clear
+    - php artisan route:clear
+    - php artisan debugbar:clear
+    - php artisan event:clear
+    - php artisan view:clear
+    - php artisan optimize:clear
+    - php artisan clear-compiled
+
+# SQLSTATE[HY000] [2054] Server sent charset (0) unknown to the client.
+# https://stackoverflow.com/questions/53002483/sqlstatehy000-2054-server-sent-charset-unknown-to-the-client-please-report
+# https://stackoverflow.com/questions/78036671/mariadb-11-3-2-php-server-sent-charset-0-unknown-to-the-client-please-rep
+# https://github.com/php/php-src/issues/13452
+# So it appears to be an issue caused by MariaDB v11.3
+- name: artisan migrate
+  ansible.builtin.command: php artisan migrate --force
+  args:
+    chdir: "{{ snipeit.dir.install }}"
+  become: true
+  become_user: "{{ snipeit.www.owner }}"

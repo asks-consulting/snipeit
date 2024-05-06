@@ -1,13 +1,97 @@
 ---
 
-# https://docs.ansible.com/ansible/latest/collections/community/general/to_ini_filter.html
-- name: Write .env file to {{ snipeit.dir.install }}/.env
+- name: Check if .env file exists
+  ansible.builtin.stat:
+    path: "{{ snipeit.dir.install }}/.env"
+  become: true
+  become_user: "{{ snipeit.www.owner }}"
+  register: snipeit_dotenv
+
+- name: Read existing APP_KEY
+  ansible.builtin.command: "grep -oP 'APP_KEY=\\K\\S*' {{ snipeit.dir.install }}/.env"
+  become: true
+  become_user: "{{ snipeit.www.owner }}"
+  register: snipeit_appkey_fetched
+  when: snipeit_dotenv.stat.exists | bool
+
+- debug:
+    var: snipeit_appkey_fetched
+    # changed: false
+    # false_condition: snipeit_dotenv.stat.exists | bool
+    # skip_reason: Conditional result was False
+    # skipped: true
+  when: snipeit_testing | bool
+
+# - ansible.builtin.wait_for:
+#     timeout: 30
+#   when: snipeit_testing | bool
+
+# NOTE, app key cannot be generated until the .env file is properly configured (if it exists)
+# https://github.com/snipe/snipe-it/issues/11213
+# Therefore it is better to generate APP KEY before copying .env into place
+- name: Generate APP_KEY
+  ansible.builtin.command: php artisan key:generate --show
+  args:
+    chdir: "{{ snipeit.dir.install }}"
+  become: true
+  become_user: "{{ snipeit.www.owner }}"
+  register: snipeit_appkey
+  # careful how you check status of *fetched - only field that is useful and can
+  # be counted on to exist in either case is "changed"
+  when: not (snipeit_appkey_fetched.changed | bool)
+
+- debug:
+    var: snipeit_appkey
+    # changed: true
+    # failed: false
+    # msg: ''
+    # rc: 0
+    # stderr: ''
+    # stderr_lines: []
+    # stdout: base64:...=
+  when: snipeit_testing | bool
+
+# - ansible.builtin.wait_for:
+#     timeout: 30
+#   when: snipeit_testing | bool
+
+- name: Copy .env.example file to .env
   ansible.builtin.copy:
-    # > to_ini failed to parse given dict:'AnsibleUnsafeText' object has no attribute 'items'.
-    # > 'AnsibleUnsafeText' object has no attribute 'items'
-    # content: "{{ snipeit_dotenv | community.general.to_ini }}"
-    content: "{{ snipeit_dotenv | ansible.builtin.to_nice_yaml }}"
+    remote_src: true
+    src: "{{ snipeit.dir.install }}/.env.example"
     dest: "{{ snipeit.dir.install }}/.env"
     owner: "{{ snipeit.www.owner }}"
     group: "{{ snipeit.www.group }}"
     mode: '0444'
+
+- name: Configure APP_KEY in .env file
+  ansible.builtin.lineinfile:
+    path: "{{ snipeit.dir.install }}/.env"
+    regexp: "^APP_KEY="
+    # the problem is how to determine whether to use {{ snipeit_appkey_fetched }} or {{ snipeit_appkey }}
+    # (depending on which was set, the other will have been skipped and thus contain different fields...)
+    # the one field they have in common is ".changed", and it's only "true" if that var was set.
+    line: "APP_KEY={% if snipeit_appkey_fetched.changed | bool %}{{ snipeit_appkey_fetched.stdout }}{% else %}{{ snipeit_appkey.stdout }}{% endif %}"
+    owner: "{{ snipeit.www.owner }}"
+    group: "{{ snipeit.www.group }}"
+
+- debug:
+    var: snipeit_env
+  when: snipeit_testing | bool
+
+# https://docs.ansible.com/ansible/latest/collections/ansible/builtin/lineinfile_module.html
+- name: Configure .env file
+  ansible.builtin.lineinfile:
+    path: "{{ snipeit.dir.install }}/.env"
+    regexp: "^{{ item.key }}="
+    line: "{{ item.key }}={{ item.value }}"
+    # owner: "{{ snipeit.www.owner }}"
+    # group: "{{ snipeit.www.group }}"
+  loop: "{{ snipeit_env | dict2items }}"
+
+- name: Create scheduler cron job
+  ansible.builtin.cron:
+    name: "Snipe-IT Artisan scheduler"
+    job: "/usr/bin/php {{ snipeit.dir.install }}/artisan schedule:run"
+  become: true
+  become_user: "{{ snipeit.www.owner }}"

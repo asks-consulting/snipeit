@@ -10,18 +10,18 @@
   tags: config-only
 
 - ansible.builtin.import_tasks: database.yml
+  tags: config-only
 
 - ansible.builtin.import_tasks: install.yml
 
 - ansible.builtin.import_tasks: config.yml
+  tags: config-only
 
 - ansible.builtin.import_tasks: vhost.yml
-
-- pause:
-    minutes: 30
-  when: snipeit_testing | bool
+  tags: config-only
 
 - ansible.builtin.import_tasks: migrations.yml
+  tags: config-only
 
 - ansible.builtin.import_tasks: log-git-state.yml
   tags:

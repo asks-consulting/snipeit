@@ -1,33 +1,54 @@
 # Snipe-IT
 
-Ansible role to install Snipe-IT asset manager.
+Ansible role to install and configure Snipe-IT asset manager.
 
 > Snipe-IT is built on Laravel, [...] follows a standard Laravel MVC file structure.
 > Within the Snipe-IT project, you'll see a `public` directory. That directory
 > should be set as your document root.
 > https://snipe-it.readme.io/docs/introduction
 
-PHP >= 7.4 < v8.1.2 with the following extensions:
-- JSON PHP Extension
-- OpenSSL PHP Extension
-- PDO PHP Extension
-- `php-mbstring` Mbstring PHP Extension
-- `php-tokenizer` Tokenizer PHP Extension
-- `php-curl` cURL PHP Extension
-- `php-mysql` MySQLi PHP Extension
-- `php-ldap` LDAP PHP extension (only if using LDAP)
-- `php-zip` PHPZIP PHP extension
-- Fileinfo PHP extension
-- `php-bcmath` PHP BCMath PHP extension
-- `php-xml` PHP XML PHP extension
-- PHP Sodium PHP Extension
-- PHP Exif PHP Extension
-+ `php-gd`
 
-Composer `printf 'no\n'| sudo composer install --no-dev --prefer-source`
-MySQL or MariaDB
-GD Library (>=2.0) or Imagick PHP extension (>=6.3.8)
-git
+For reference, the Apache vhost on the reverse proxy:
+```
+<VirtualHost *:80>
+   ServerAdmin {{ vhost.email }}
+   ServerName {{ vhost.domain }}
+
+   Redirect permanent / https://{{ vhost.domain }}/
+
+   ErrorLog ${APACHE_LOG_DIR}/{{ vhost.domain }}_error.log
+   CustomLog ${APACHE_LOG_DIR}/{{ vhost.domain }}_access.log combined
+</VirtualHost>
+
+<VirtualHost *:443>
+   ServerAdmin {{ vhost.email }}
+   ServerName {{ vhost.domain }}
+
+   ProxyPreserveHost On
+   ProxyPass / http://{{ vhost.ip }}/
+   ProxyPassReverse / http://{{ vhost.ip }}/
+   RequestHeader set X-Forwarded-Proto "https"
+
+   SSLEngine on
+   SSLCertificateKeyFile   /etc/letsencrypt/live/{{ vhost.domain }}/privkey.pem
+   SSLCertificateFile      /etc/letsencrypt/live/{{ vhost.domain }}/cert.pem
+   SSLCertificateChainFile /etc/letsencrypt/live/{{ vhost.domain }}/chain.pem
+
+   ErrorLog ${APACHE_LOG_DIR}/{{ vhost.domain }}_error.log
+   CustomLog ${APACHE_LOG_DIR}/{{ vhost.domain }}_access.log combined
+</VirtualHost>
+```
+
+## Known issue
+
+Mail does not work to my mailserver which uses `starttls`. Not sure why.
+Seems Snipe-IT does not support/allow `starttls` despite both `openssl` and
+`telnet` on the same host connecting fine to the mailserver.
+The log in `/opt/snipeit/storage/logs/laravel.log` appears to produce output, but
+I find it practically impossible to understand it (no timestamps, weird syntax).
+
+In the GUI it just says `Mail could not be sent`, and `No additional error message provided`.
+I guess I can live without Snipe-IT's emails.
 
 
 
@@ -46,6 +67,7 @@ git
 
 ### Ansible roles
 
++ https://github.com/snipe/snipe-it/blob/master/ansible/ubuntu/vagrant_playbook.yml
 + https://github.com/wiggels/ansible-role-snipe-it install, configure, and update a Snipe-IT server on Ubuntu 20/22
 + https://github.com/zubeirahamed/Ansible-snipe-it
 + https://github.com/howdycloudyarsh/SnipeIT-Ansible

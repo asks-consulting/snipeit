@@ -6,6 +6,7 @@
     vhost_wwwroot: "{{ snipeit.www.root }}"
     vhost_email: "{{ snipeit.smtp.replyto.address }}"
 
+# https://github.com/snipe/snipe-it/blob/master/ansible/ubuntu/apachevirtualhost.conf.j2
 - name: "Configure vhost {{ vhost_domain }}"
   ansible.builtin.template:
     src: vhost.conf.j2
@@ -23,3 +24,11 @@
 - name: "a2ensite {{ vhost_domain }}.conf"
   ansible.builtin.command: "a2ensite {{ vhost_domain }}.conf"
   when: not (snipeit_vhost_enabled.stat.exists | bool)
+
+- name: Symlink {{ snipeit.dir.install }} to {{ snipeit.www.root }}
+  ansible.builtin.file:
+    src: "{{ snipeit.dir.install }}"
+    dest: "{{ snipeit.www.root }}"
+    owner: "{{ snipeit.www.owner }}"
+    group: "{{ snipeit.www.group }}"
+    state: link

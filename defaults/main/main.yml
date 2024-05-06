@@ -10,7 +10,10 @@ snipeit_default:
   config:
     # local or production
     environment: "production"
-    key: "<yoursecretappkey>"
+    # please regenerate the APP_KEY value by calling
+    # `php artisan key:generate --show`
+    # (note that the command is non-interactive, simply returns a random base64 string)
+    # key: "<yoursecretappkey>"
     # https://www.w3schools.com/php/php_ref_timezones.asp
     # Europe/Stockholm
     timezone: "UTC"
@@ -27,7 +30,8 @@ snipeit_default:
     name: snipeit
     user: "<sql_username>"
     pass: "<sql_password>"
-    host: localhost
+    host: 127.0.0.1
+    port: 3306
     prefix: "snipeit_"
     root_pass: "<sql_root_password>"
     socket: /var/run/mysqld/mysqld.sock
