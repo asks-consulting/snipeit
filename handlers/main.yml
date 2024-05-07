@@ -10,7 +10,20 @@
     name: "{{ apache_service }}"
     state: "{{ apache_reload_state }}"
 
-- name: restart mysql
-  ansible.builtin.service:
-    name: "{{ mysql_daemon }}"
-    state: restarted
+# Cleanup (remove) the decrypted database backup on the Ansible controller
+- name: Remove the decrypted database backup
+  delegate_to: localhost
+  become: true
+  become_user: "{{ ansible_env.USER }}"
+  ansible.builtin.file:
+    path: "{{ snipeit_backup_dir }}/{{ snipeit.database.name }}.sql.gz"
+    state: absent
+
+# Cleanup (remove) the decrypted workingdir backup on the Ansible controller
+- name: Remove the decrypted tarball backup
+  delegate_to: localhost
+  become: true
+  become_user: "{{ ansible_env.USER }}"
+  ansible.builtin.file:
+    path: "{{ snipeit_backup_dir }}/{{ role_name }}_files.tar"
+    state: absent

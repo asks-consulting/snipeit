@@ -4,6 +4,7 @@
   ansible.builtin.import_tasks: merge-defaults.yml
   tags:
     - default
+    - backups-only
     - config-only
     - desktop-entry
 
@@ -18,9 +19,18 @@
     - ansible.builtin.import_tasks: database.yml
       tags: config-only
 
-    - ansible.builtin.import_tasks: install.yml
+    - ansible.builtin.import_tasks: restore.yml
+      when:
+        - snipeit_restore.overwrite | bool
+        - snipeit_restore.timestamp != ""
 
+    # not needed when restoring from backup
+    - ansible.builtin.import_tasks: install.yml
+      when: not (snipeit_restore.overwrite | bool)
+
+    # not needed when restoring from backup
     - ansible.builtin.import_tasks: config.yml
+      when: not (snipeit_restore.overwrite | bool)
       tags: config-only
 
     - ansible.builtin.import_tasks: vhost.yml
@@ -28,6 +38,14 @@
 
     - ansible.builtin.import_tasks: migrations.yml
       tags: config-only
+
+    # backup should not be executed when restore just occurred
+    # note that you can skip the backup as well by setting
+    # snipeit_restore.overwrite=False (as long as .timestamp is still empty)
+    - name: Backup the database and the working directory
+      ansible.builtin.import_tasks: backup.yml
+      when: not (snipeit_restore.overwrite | bool)
+      tags: backups-only
   # END OF BLOCK
 
 
@@ -39,4 +57,5 @@
   tags:
     - log-git-state
     - config-only
+    - backups-only
     - desktop-entry

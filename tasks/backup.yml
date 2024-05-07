@@ -1,0 +1,141 @@
+---
+
+# Backup the Snipe-IT database to backup directory via the Ansible controller
+
+- name: Timestamp this backup
+  ansible.builtin.set_fact:
+    # iso8601_basic_short should look like 20220122T223743
+    this_backup_timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+
+- name: Set backup folder name
+  ansible.builtin.set_fact:
+    this_backup_name: "{{ role_name }}-{{ this_backup_timestamp }}"
+
+- name: Set temporary backup path
+  ansible.builtin.set_fact:
+    this_backup_tmp: "/tmp/{{ this_backup_name }}"
+
+
+- name: Backup Snipe-IT database
+  block:
+
+    # note: dumps db and compresses on-the-fly before saving to disk
+    # When using the default InnoDB engine, it is important to use the `--single-transaction` flag
+    # https://mariadb.com/kb/en/mariadb-backups-overview-for-sql-server-users
+    # https://mysqldump.guru/run-mysqldump-without-locking-the-tables.html
+    # https://stackoverflow.com/a/41704768
+    # https://serverfault.com/q/231300
+    # In light of the above links, and the fact that we are using InnoDB engine, I decided to
+    # add --single-transaction and remove --lock-tables (and explicitly add --skip-lock-tables)
+    # NOTE: this dump command must not be used with MyISAM databases, it expects InnoDB engine!
+    - name: Backup (mysqldump) Snipe-IT database
+      ansible.builtin.shell: >
+        mysqldump
+        --single-transaction
+        --skip-lock-tables
+        -u {{ snipeit.database.user }}
+        -p{{ snipeit.database.pass }}
+        {{ snipeit.database.name }} | gzip > {{ this_backup_tmp }}.sql.gz
+      no_log: "{% if snipeit_testing | bool %}false{% else %}true{% endif %}"
+      become: true
+      become_user: root
+
+    # https://docs.ansible.com/ansible/latest/collections/ansible/builtin/fetch_module.html
+    # unless the database is compressed, this fetch takes forever (even with compression it takes a while)
+    - name: Copy the compressed database to backup directory on BAY
+      ansible.builtin.fetch:
+        src: "{{ this_backup_tmp }}.sql.gz"
+        dest: "{{ backup_root_path }}/hosts/{{ inventory_hostname }}/{{ this_backup_name }}/{{ snipeit.database.name }}.sql.gz"
+        flat: yes
+      # if fetch is run with become the transfer size is effectively doubled
+      # https://docs.ansible.com/ansible/latest/collections/ansible/builtin/fetch_module.html#notes
+      become: false
+
+    - name: "Remove the temporary dump from remote"
+      ansible.builtin.file:
+        path: "{{ this_backup_tmp }}.sql.gz"
+        state: absent
+
+    - name: Encrypt the backup database dump
+      ansible.builtin.command: >
+        gpg --encrypt --recipient '{{ gpg_key }}'
+        {{ backup_root_path }}/hosts/{{ inventory_hostname }}/{{ this_backup_name }}/{{ snipeit.database.name }}.sql.gz
+      become: true
+      become_user: "{{ ansible_env.USER }}"
+      delegate_to: localhost
+
+    - name: Delete the plain-text database dump
+      ansible.builtin.file:
+        path: "{{ backup_root_path }}/hosts/{{ inventory_hostname }}/{{ this_backup_name }}/{{ snipeit.database.name }}.sql.gz"
+        state: absent
+      become: true
+      become_user: "{{ ansible_env.USER }}"
+      delegate_to: localhost
+  # END OF BLOCK
+
+
+- name: Backup Snipe-IT working directory
+  block:
+
+    - ansible.builtin.set_fact:
+        snipeit_archive_name: "{{ role_name }}_files.tar"
+
+    - ansible.builtin.set_fact:
+        snipeit_archive_tmp: "/tmp/{{ snipeit_archive_name }}"
+        snipeit_archive_format: gz
+
+    # https://docs.ansible.com/ansible/latest/collections/community/general/archive_module.html
+    - name: "Backup Snipe-IT working directory (compressed as {{ snipeit_archive_format }})"
+      # note! path and dest on the remote host!
+      community.general.archive:
+        path: "{{ snipeit.dir.install }}"
+        dest: "{{ snipeit_archive_tmp }}"
+        format: "{{ snipeit_archive_format }}"
+        # is this the ownership of the created tarball?
+        owner: "{{ ansible_env.USER }}"
+        group: "{{ ansible_env.USER }}"
+        mode: ug=rw,o=r
+
+    # https://docs.ansible.com/ansible/latest/collections/ansible/builtin/fetch_module.html
+    # > it is advisable to run fetch tasks with become: false whenever possible
+    - name: Copy the compressed archive to backup directory
+      ansible.builtin.fetch:
+        src: "{{ snipeit_archive_tmp }}"
+        dest: "{{ backup_root_path }}/hosts/{{ inventory_hostname }}/{{ this_backup_name }}/{{ snipeit_archive_name }}"
+        flat: yes
+      # this remote file is owned by our username, so we can use `become: false`
+      # if fetch is run with "become" the transfer size is effectively doubled
+      # https://docs.ansible.com/ansible/latest/collections/ansible/builtin/fetch_module.html#notes
+      become: false
+      # fetch output:
+        # "changed": true,
+        # "checksum": "08e6025303adc050d8e74ccbd6abe6debc05feb0",
+        # "dest": "{{ backup_root_path }}/hosts/{{ inventory_hostname }}/{{ this_backup_name }}/{{ snipeit_archive_name }}",
+        # "failed": false,
+        # "md5sum": "a6e3677a1d2e8b57fb133b5a93dcf921",
+        # "remote_checksum": "08e6025303adc050d8e74ccbd6abe6debc05feb0",
+        # "remote_md5sum": null
+      register: snipeit_file_copy
+
+    - name: Remove the compressed archive from the remote
+      ansible.builtin.file:
+        path: "{{ snipeit_archive_tmp }}"
+        state: absent
+      when: not (snipeit_file_copy.failed | bool)
+
+    - name: Encrypt the compressed archive
+      ansible.builtin.command: >
+        gpg --encrypt --recipient '{{ gpg_key }}'
+        {{ backup_root_path }}/hosts/{{ inventory_hostname }}/{{ this_backup_name }}/{{ snipeit_archive_name }}
+      become: true
+      become_user: "{{ ansible_env.USER }}"
+      delegate_to: localhost
+
+    - name: Delete the plain-text compressed archive
+      ansible.builtin.file:
+        path: "{{ backup_root_path }}/hosts/{{ inventory_hostname }}/{{ this_backup_name }}/{{ snipeit_archive_name }}"
+        state: absent
+      become: true
+      become_user: "{{ ansible_env.USER }}"
+      delegate_to: localhost
+  # END OF BLOCK

@@ -16,15 +16,7 @@
 
 - debug:
     var: snipeit_appkey_fetched
-    # changed: false
-    # false_condition: snipeit_dotenv.stat.exists | bool
-    # skip_reason: Conditional result was False
-    # skipped: true
   when: snipeit_testing | bool
-
-# - ansible.builtin.wait_for:
-#     timeout: 30
-#   when: snipeit_testing | bool
 
 # NOTE, app key cannot be generated until the .env file is properly configured (if it exists)
 # https://github.com/snipe/snipe-it/issues/11213
@@ -42,18 +34,7 @@
 
 - debug:
     var: snipeit_appkey
-    # changed: true
-    # failed: false
-    # msg: ''
-    # rc: 0
-    # stderr: ''
-    # stderr_lines: []
-    # stdout: base64:...=
   when: snipeit_testing | bool
-
-# - ansible.builtin.wait_for:
-#     timeout: 30
-#   when: snipeit_testing | bool
 
 - name: Copy .env.example file to .env
   ansible.builtin.copy:

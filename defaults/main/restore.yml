@@ -1,0 +1,10 @@
+---
+
+# Restore from backup (warning: will overwrite existing files and database!)
+# Note that restore only happens if *both* overwrite==true and timestamp != ""
+# --extra-vars '{snipeit_restore: { overwrite: true, timestamp: "20220122T223743" }}'
+snipeit_restore:
+  # to restore from backup, set "overwrite: true"
+  overwrite: false
+  # to restore from backup, set timestamp to that of an existing backup
+  timestamp: ""

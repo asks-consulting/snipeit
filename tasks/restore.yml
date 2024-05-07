@@ -1,0 +1,116 @@
+---
+
+- ansible.builtin.set_fact:
+    # directory we are backing up from
+    snipeit_backup_dir: "{{ backup_root_path }}/hosts/{{ inventory_hostname }}/{{ role_name }}-{{ snipeit_restore.timestamp }}"
+    # temporary place to save stuff
+    snipeit_backup_tmp: "/tmp"
+
+- name: Check that a backup with this timestamp exists
+  ansible.builtin.stat:
+    path: "{{ snipeit_backup_dir }}"
+  delegate_to: localhost
+  register: this_backup
+
+- name: Fail if backup directory was not found
+  ansible.builtin.fail:
+    msg: "Could not find any backup with timestamp {{ snipeit_restore.timestamp }}"
+  delegate_to: localhost
+  when: not (this_backup.stat.exists | bool)
+
+
+- name: Transfer database to target and restore to MariaDB server
+  block:
+
+    - name: Check if backup database is decrypted
+      ansible.builtin.stat:
+        path: "{{ snipeit_backup_dir }}/{{ snipeit.database.name }}.sql.gz.gpg"
+      register: snipeit_bkp_db_crypt_path
+
+    - name: Decrypt the backup database
+      delegate_to: localhost
+      ansible.builtin.shell: >
+        gpg --decrypt {{ snipeit.database.name }}.sql.gz.gpg
+        > {{ snipeit.database.name }}.sql.gz
+      args:
+        chdir: "{{ snipeit_backup_dir }}"
+      become: true
+      become_user: "{{ ansible_env.USER }}"
+      when: not (snipeit_bkp_db_crypt_path.stat.exists | bool)
+
+    - name: "Copy decrypted backup database to remote"
+      ansible.builtin.copy:
+        remote_src: no
+        src: "{{ snipeit_backup_dir }}/{{ snipeit.database.name }}.sql.gz"
+        dest: "{{ snipeit_backup_tmp }}"
+      become: true
+      become_user: "{{ ansible_env.USER }}"
+      register: snipeit_bkp_db_path
+
+    # This module is not idempotent when "state: import", and will
+    # import the dump file each time it is run.
+    # https://docs.ansible.com/ansible/latest/collections/community/mysql/mysql_db_module.html
+    # We can live with that - our databases are generally small, less than 1 MB, and
+    # in any case none of the "restore" tasks are run unless the restore var was explicitly set.
+    - name: Restore backup database into MariaDB
+      community.mysql.mysql_db:
+        state: import
+        target: "{{ snipeit_bkp_db_path.dest }}"
+        name: "{{ snipeit_bkp_db_path.item }}"
+        # note, for at the moment unknown reason, the following line causes
+        # this task to fail with an opaque error message
+        # check_implicit_admin: yes
+        login_unix_socket: "{{ snipeit.database.socket }}"
+
+    - name: Remove the decrypted database from the target
+      ansible.builtin.file:
+        path: "{{ snipeit_bkp_db_path.dest }}"
+        state: absent
+      notify: Remove the decrypted database backup
+  # END OF BLOCK
+
+
+
+- name: Transfer and restore Snipe-IT working directory to target
+  block:
+
+    - name: Check if backup tarball is decrypted
+      ansible.builtin.stat:
+        path: "{{ snipeit_backup_dir }}/{{ role_name }}_files.tar.gpg"
+      register: snipeit_bkp_tarball_path
+
+    - name: Decrypt the backup tarball
+      delegate_to: localhost
+      ansible.builtin.shell: >
+        gpg --decrypt {{ role_name }}_files.tar.gpg > {{ role_name }}_files.tar
+      args:
+        chdir: "{{ snipeit_backup_dir }}"
+      become: true
+      become_user: "{{ ansible_env.USER }}"
+      when: not (snipeit_bkp_tarball_path.stat.exists | bool)
+
+    # slow task?
+    - name: Copy backup tarball to target
+      ansible.builtin.copy:
+        src: "{{ snipeit_backup_dir }}/{{ role_name }}_files.tar"
+        dest: "{{ snipeit_backup_tmp }}/{{ role_name }}_files.tar"
+        owner: "{{ ansible_env.USER }}"
+        group: "{{ ansible_env.USER }}"
+
+    # We don't specify owner/group parameters, because when left unspecified it
+    # uses the current group of the current user unless you are root, in which
+    # case it can preserve the previous ownership (which is exactly what we want)
+    # Note that this unarchive operation successfully preserves the owner/group and
+    # file/folder permissions, which means we are done.
+    - name: Unpack backup tarball into place
+      ansible.builtin.unarchive:
+        remote_src: yes
+        src: "{{ snipeit_backup_tmp }}/{{ role_name }}_files.tar"
+        dest: "{{ snipeit.dir.install }}"
+
+    - name: Remove the decrypted tarball from the target
+      ansible.builtin.file:
+        path: "{{ snipeit_backup_tmp }}/{{ role_name }}_files.tar"
+        state: absent
+      notify: Remove the decrypted tarball backup
+  # END OF  BLOCK
