@@ -47,6 +47,10 @@
       become_user: "{{ ansible_env.USER }}"
       register: snipeit_bkp_db_path
 
+    - debug:
+        var: snipeit_bkp_db_path
+      when: snipeit_testing | bool
+
     # This module is not idempotent when "state: import", and will
     # import the dump file each time it is run.
     # https://docs.ansible.com/ansible/latest/collections/community/mysql/mysql_db_module.html
@@ -56,13 +60,13 @@
       community.mysql.mysql_db:
         state: import
         target: "{{ snipeit_bkp_db_path.dest }}"
-        name: "{{ snipeit_bkp_db_path.item }}"
-        # note, for at the moment unknown reason, the following line causes
+        name: "{{ snipeit.database.name }}"
+        # note, for at the moment unknown reason, check_implicit_admin causes
         # this task to fail with an opaque error message
         # check_implicit_admin: yes
         login_unix_socket: "{{ snipeit.database.socket }}"
 
-    - name: Remove the decrypted database from the target
+    - name: Remove the decrypted temporary database dump from the target
       ansible.builtin.file:
         path: "{{ snipeit_bkp_db_path.dest }}"
         state: absent
@@ -89,13 +93,23 @@
       become_user: "{{ ansible_env.USER }}"
       when: not (snipeit_bkp_tarball_path.stat.exists | bool)
 
-    # slow task?
     - name: Copy backup tarball to target
       ansible.builtin.copy:
         src: "{{ snipeit_backup_dir }}/{{ role_name }}_files.tar"
         dest: "{{ snipeit_backup_tmp }}/{{ role_name }}_files.tar"
         owner: "{{ ansible_env.USER }}"
         group: "{{ ansible_env.USER }}"
+
+    # - name: Ensure working directory exists
+    #   ansible.builtin.file:
+    #     path: "{{ snipeit.dir.install }}"
+    #     owner: "{{ snipeit.www.owner }}"
+    #     group: "{{ snipeit.www.group }}"
+    #     state: directory
+
+    - debug:
+        msg: "{{ snipeit.dir.install | dirname }}"
+      when: snipeit_testing | bool
 
     # We don't specify owner/group parameters, because when left unspecified it
     # uses the current group of the current user unless you are root, in which
@@ -106,7 +120,8 @@
       ansible.builtin.unarchive:
         remote_src: yes
         src: "{{ snipeit_backup_tmp }}/{{ role_name }}_files.tar"
-        dest: "{{ snipeit.dir.install }}"
+        dest: "{{ snipeit.dir.install | dirname }}"
+      notify: restart apache
 
     - name: Remove the decrypted tarball from the target
       ansible.builtin.file:

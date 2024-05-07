@@ -39,11 +39,12 @@
     - ansible.builtin.import_tasks: migrations.yml
       tags: config-only
 
-    # backup should not be executed when restore just occurred
-    # note that you can skip the backup as well by setting
-    # snipeit_restore.overwrite=False (as long as .timestamp is still empty)
+    # note that you can skip the backup by setting
+    # snipeit_restore.overwrite=False (just take care not to set .timestamp at the same time)
     - name: Backup the database and the working directory
       ansible.builtin.import_tasks: backup.yml
+      # to ensure backup does not execute when restore just occurred
+      # (simply because it is unnecessary, nothing dangerous would happen if it did)
       when: not (snipeit_restore.overwrite | bool)
       tags: backups-only
   # END OF BLOCK
