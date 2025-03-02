@@ -52,7 +52,3 @@ snipeit_default:
 # set snipeit_testing to true to enable debug messages
 # easiest via --extra-vars "{snipeit_testing: true}"
 snipeit_testing: false
-
-# host_restrictions==False by default to allow any tasks limited to run on specific
-# hosts in solarchemist's environment (in order to allow anyone to run the role as-is)
-host_restrictions: false

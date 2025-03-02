@@ -6,11 +6,9 @@
     - default
     - backups-only
     - config-only
-    - desktop-entry
 
 
 - name: Setup Snipe-IT
-  when: not (host_restrictions | bool) or group_names is not search("workstation")
   block:
 
     - ansible.builtin.import_tasks: version-check.yml
@@ -50,13 +48,8 @@
   # END OF BLOCK
 
 
-- ansible.builtin.import_tasks: desktop-entry.yml
-  when: not (host_restrictions | bool) or group_names is search("workstation")
-  tags: desktop-entry
-
 - ansible.builtin.import_tasks: log-git-state.yml
   tags:
     - log-git-state
     - config-only
     - backups-only
-    - desktop-entry
